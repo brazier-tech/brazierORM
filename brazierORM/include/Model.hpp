@@ -50,13 +50,8 @@ namespace brazier {
 
         std::shared_ptr<Database> database;
 
-        static std::shared_ptr<Database> getDefaultDatabase() {
-            static auto db = std::make_shared<Database>();
-            return db;
-        }
-
     public:
-        Model(const std::shared_ptr<Database>& db = getDefaultDatabase()) : database(db) {}
+        Model(const std::shared_ptr<Database>& db) : database(db) {}
 
         virtual ~Model() = default;
 
@@ -104,18 +99,16 @@ namespace brazier {
             }
 
             if (!database) {
-                database = getDefaultDatabase();
+                throw std::runtime_error("Database connection is not initialized");
             }
 
             if (attributes.empty()) {
-                Logger::log("Attributes are empty", "ERROR");
                 return false;
             }
 
             PGconn* conn = database->getConnection();
             if (!conn) {
-                Logger::log("Failed to get database connection", "ERROR");
-                return false;
+				throw std::runtime_error("Failed to get database connection");
             }
 
             bool hasId = attributes.find(Derived::primary_key) != attributes.end() &&
@@ -176,7 +169,7 @@ namespace brazier {
             return std::find(Derived::fields.begin(), Derived::fields.end(), field) != Derived::fields.end();
         }
 
-        static std::shared_ptr<Derived> create(const std::map<std::string, std::string>& data, bool withFields = false, const std::shared_ptr<Database>& db = getDefaultDatabase()) {
+        static std::shared_ptr<Derived> create(const std::map<std::string, std::string>& data, bool withFields, const std::shared_ptr<Database>& db) {
             auto model = std::make_shared<Derived>(db);
             for (const auto& [key, value] : data) {
                 if (!isField(key)) {
@@ -194,9 +187,9 @@ namespace brazier {
             return model;
         }
 
-        static std::shared_ptr<Derived> find(int id, const std::shared_ptr<Database>& db = getDefaultDatabase()) {
+        static std::shared_ptr<Derived> find(int id, const std::shared_ptr<Database>& db) {
             try {
-                auto results = query().Where(Derived::primary_key + " = " + std::to_string(id)).Limit(1).get();
+                auto results = query().Where(Derived::primary_key + " = " + std::to_string(id)).Limit(1).get(db);
                 if (results.empty()) {
                     Logger::log("No data found by id", "WARNING");
                     return nullptr;
@@ -211,7 +204,7 @@ namespace brazier {
             }
         }
 
-        static void update(int id, const std::map<std::string, std::string>& data, const std::shared_ptr<Database>& db = getDefaultDatabase()) {
+        static void update(int id, const std::map<std::string, std::string>& data, const std::shared_ptr<Database>& db) {
             try {
                 PGconn* conn = db->getConnection();
                 if (!conn) {
@@ -229,7 +222,7 @@ namespace brazier {
                     Logger::log("No valid fields provided for update", "WARNING");
                     return;
                 }
-                builder.Update(updateValues).Where("id = " + SQLString::EscapeString(conn, std::to_string(id)));
+                builder.Update(updateValues).Where(Derived::primary_key + " = " + SQLString::EscapeString(conn, std::to_string(id)));
                 db->execute(builder.get());
             }
             catch (const std::exception& e) {
@@ -239,19 +232,19 @@ namespace brazier {
 
         void delete_() {
             try {
-                if (!database) database = getDefaultDatabase();
+                if (!database) throw std::runtime_error("Database connection is not initialized");
                 PGconn* conn = database->getConnection();
                 if (!conn) {
                     Logger::log("Failed to get database connection", "ERROR");
                     return;
                 }
                 SQLQueryBuilder builder(Derived::table_name);
-                auto id = getAttribute("id");
+                auto id = getAttribute(Derived::primary_key);
                 if (id.empty()) {
                     Logger::log("ID attribute is missing", "ERROR");
                     return;
                 }
-                builder.Delete().Where("id = " + SQLString::EscapeString(conn, id));
+                builder.Delete().Where(Derived::primary_key + " = " + SQLString::EscapeString(conn, id));
                 std::string query = builder.get();
                 database->execute(query);
             }
@@ -260,7 +253,7 @@ namespace brazier {
             }
         }
 
-        static void deleteById(int id, const std::shared_ptr<Database>& db = getDefaultDatabase()) {
+        static void deleteById(int id, const std::shared_ptr<Database>& db) {
             try {
                 PGconn* conn = db->getConnection();
                 if (!conn) {
@@ -277,11 +270,11 @@ namespace brazier {
             }
         }
 
-        static bool deleteWhere(const std::string& condition, const std::shared_ptr<Database>& db = getDefaultDatabase()) {
+        static bool deleteWhere(const std::string& condition, const std::shared_ptr<Database>& db) {
             try {
                 PGconn* conn = db->getConnection();
                 if (!conn) {
-                    Logger::log("Failed to get database connection", "ERROR");
+					throw std::runtime_error("Failed to get database connection");
                     return false;
                 }
                 SQLQueryBuilder builder(Derived::table_name);
@@ -292,17 +285,16 @@ namespace brazier {
                 return true;
             }
             catch (const std::exception& e) {
-                Logger::log("Delete where failed: " + std::string(e.what()), "ERROR");
-                return false;
+				throw std::runtime_error("Delete where failed: " + std::string(e.what()));
             }
         }
 
-        static Collection<Derived> where(const std::string& condition, const std::shared_ptr<Database>& db = getDefaultDatabase()) {
-            auto items = query().Where(condition).get();
+        static Collection<std::shared_ptr<Derived>> where(const std::string& condition, const std::shared_ptr<Database>& db) {
+            auto items = query().Where(condition).get(db);
             for (const auto& item : items) {
                 item->setDatabase(db);
             }
-            return Collection<Derived>(items);
+            return items;
         }
 
 
@@ -312,12 +304,11 @@ namespace brazier {
             @return True if all models were saved successfully, false otherwise.
             @note This method will attempt to batch insert and update models based on their primary key. If a model has a primary key, it will be updated; otherwise, it will be inserted.
         */
-        static bool saveMany(const std::vector<std::shared_ptr<Derived>>& models, const std::shared_ptr<Database>& db = getDefaultDatabase()) {
+        static bool saveMany(const std::vector<std::shared_ptr<Derived>>& models, const std::shared_ptr<Database>& db) {
             PGconn* conn = db->getConnection();
 
             if (!conn) {
-                Logger::log("Failed to get database connection", "ERROR");
-                return false;
+				throw std::runtime_error("Failed to get database connection");
             }
 
             if (models.empty()) {
@@ -377,7 +368,7 @@ namespace brazier {
                     }
                     catch (const std::exception& e) {
                         Logger::log("Failed to update model: " + std::string(e.what()), "ERROR");
-                        return false;
+                        throw std::runtime_error("Failed to update model: " + std::string(e.what()));
                     }
                 }
 
@@ -388,7 +379,7 @@ namespace brazier {
                     }
                     catch (const std::exception& e) {
                         Logger::log("Batch update error: " + std::string(e.what()), "ERROR");
-                        return false;
+                        throw std::runtime_error("Batch update error: " + std::string(e.what()));
                     }
                 }
             }
@@ -442,25 +433,25 @@ namespace brazier {
                 }
                 catch (const std::exception& e) {
                     Logger::log("Batch insert error: " + std::string(e.what()), "ERROR");
-                    return false;
+                    throw std::runtime_error("Batch insert error: " + std::string(e.what()));
                 }
             }
 
             return true;
         }
 
-        static Collection<Derived> all(const std::shared_ptr<Database>& db = getDefaultDatabase()) {
+        static Collection<std::shared_ptr<Derived>> all(const std::shared_ptr<Database>& db) {
             return Derived::where("1 = 1", db);
         }
 
-        static std::shared_ptr<Derived> first(const std::shared_ptr<Database>& db = getDefaultDatabase()) {
-            auto results = query().Limit(1).get();
+        static std::shared_ptr<Derived> first(const std::shared_ptr<Database>& db) {
+            auto results = query().Limit(1).get(db);
             if (results.empty()) return nullptr;
             results.front()->setDatabase(db);
             return results.front();
         }
 
-        static std::shared_ptr<Derived> findOrFail(int id, const std::shared_ptr<Database>& db = getDefaultDatabase()) {
+        static std::shared_ptr<Derived> findOrFail(int id, const std::shared_ptr<Database>& db) {
             auto model = find(id, db);
             if (!model) {
                 throw std::runtime_error("Model with id " + std::to_string(id) + " not found");
@@ -477,8 +468,8 @@ namespace brazier {
         */
         static std::shared_ptr<Derived> firstOrCreate(
             const std::map<std::string, std::string>& attributes,
-            const std::map<std::string, std::string>& values = {},
-            const std::shared_ptr<Database>& db = getDefaultDatabase()
+            const std::map<std::string, std::string>& values,
+            const std::shared_ptr<Database>& db
         ) {
             std::string condition;
             for (const auto& [key, value] : attributes) {
@@ -486,10 +477,10 @@ namespace brazier {
                 condition += key + " = '" + value + "'";
             }
 
-            auto existing = where(condition, db);
-            if (!existing.empty()) return existing.front()->setDatabase(db);
+            Collection<std::shared_ptr<Derived>> existing = where(condition, db);
+            if (!existing.empty()) return std::make_shared<Derived>(existing.front());
 
-            auto allValues = attributes;
+            std::map<std::string, std::string> allValues = attributes;
             allValues.insert(values.begin(), values.end());
             return create(allValues, true, db);
         }
@@ -510,11 +501,11 @@ namespace brazier {
             return attributes.find(key) != attributes.end();
         }
 
-        static int count(const std::string& condition = "1=1", const std::shared_ptr<Database>& db = getDefaultDatabase()) {
+        static int count(const std::string& condition, const std::shared_ptr<Database>& db) {
             auto results = query()
                 .Select("COUNT(*) as total")
                 .Where(condition)
-                .get();
+                .get(db);
             // remark : Technically, models from query() doesn't need assigned `db` here unless the data is used and not just read. I assigned it for safety.
 
             for (const auto& row : results) row->setDatabase(db);
@@ -522,22 +513,22 @@ namespace brazier {
                 std::stoi(results[0]->getAttribute("total"));
         }
 
-        static int max(const std::string& column, const std::string& condition = "1=1", const std::shared_ptr<Database>& db = getDefaultDatabase()) {
+        static int max(const std::string& column, const std::string& condition, const std::shared_ptr<Database>& db) {
             auto results = query()
                 .Select("MAX(" + column + ") as max")
                 .Where(condition)
-                .get();
+                .get(db);
 
             for (const auto& row : results) row->setDatabase(db);
             return results.empty() ? 0 :
                 std::stoi(results[0]->getAttribute("max"));
         }
 
-        static int sum(const std::string& column, const std::string& condition = "1=1", const std::shared_ptr<Database>& db = getDefaultDatabase()) {
+        static int sum(const std::string& column, const std::string& condition, const std::shared_ptr<Database>& db) {
             auto results = query()
                 .Select("SUM(" + column + ") as sum")
                 .Where(condition)
-                .get();
+                .get(db);
 
             for (const auto& row : results) row->setDatabase(db);
             return results.empty() ? 0 :
@@ -600,30 +591,30 @@ namespace brazier {
             @return A pair containing a Collection of the paginated results and the total count of items matching the condition.
             @note This method calculates the offset based on the page number and items per page, retrieves the corresponding items, and also counts the total number of items that match the given condition.
         */
-        static std::pair<Collection<Derived>, int> paginate(
+        static std::pair<Collection<std::shared_ptr<Derived>>, int> paginate(
             int page,
             int perPage,
-            const std::string& condition = "1=1",
-            const std::shared_ptr<Database>& db = getDefaultDatabase()
+            const std::string& condition,
+            const std::shared_ptr<Database>& db
         ) {
             int offset = (page - 1) * perPage;
             auto items = query()
                 .Where(condition)
                 .Limit(perPage)
                 .Offset(offset)
-                .get();
+                .get(db);
             for (const auto& row : items) row->setDatabase(db);
 
             auto countQuery = query()
                 .Select("COUNT(*) as total")
                 .Where(condition)
-                .get();
+                .get(db);
             for (const auto& row : countQuery) row->setDatabase(db);
 
             int total = countQuery.empty() ? 0 :
                 std::stoi(countQuery[0]->getAttribute("total"));
 
-            return { Collection<Derived>(items), total };
+            return { items, total };
         }
 
         void debugAttributes() {
@@ -632,8 +623,8 @@ namespace brazier {
             }
         }
 
-        static Collection<Derived> collect(const std::vector<std::shared_ptr<Derived>>& items) {
-            return Collection<Derived>(items);
+        static Collection<std::shared_ptr<Derived>> collect(const std::vector<std::shared_ptr<Derived>>& items) {
+            return items;
         }
     };
 }

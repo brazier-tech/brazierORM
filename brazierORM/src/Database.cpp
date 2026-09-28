@@ -25,8 +25,8 @@ using namespace brazier;
 Database::Database(std::string db_host, std::string db_port, std::string db_user, std::string db_password, std::string db_name) {
     std::string connection_string = "host=" + db_host + " user=" + db_user + " password=" + db_password + " dbname=" + db_name + " client_encoding=UTF8";
     conn_ = PQconnectdb(connection_string.c_str());
-    Logger::log("Successfully connected to database " + db_name, "SUCCESS");
     if (PQstatus(conn_) != CONNECTION_OK) {
+        Logger::log(std::string(PQerrorMessage(conn_)), "ERROR");
         throw std::runtime_error("Connection failed: " + std::string(PQerrorMessage(conn_)));
     }
 }
@@ -38,8 +38,6 @@ Database::~Database() {
 }
 
 void brazier::Database::execute(const std::string& query) {
-    Logger::log("SQL Query: " + query, "INFO");
-
     PGresult* res = PQexec(conn_, query.c_str());
     ExecStatusType status = PQresultStatus(res);
 
@@ -66,6 +64,7 @@ void brazier::Database::transaction(const std::string name)
     }
     else {
         if (!in_transaction_) {
+            Logger::log("Cannot create savepoint outside of a transaction", "ERROR");
             throw std::runtime_error("Cannot create savepoint outside of a transaction");
         }
         sql = "SAVEPOINT \"" + name + "\"";
@@ -74,8 +73,8 @@ void brazier::Database::transaction(const std::string name)
     PGresult* res = PQexec(conn_, sql.c_str());
 
     if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-        Logger::log(std::string(PQerrorMessage(conn_)), "ERROR");
         PQclear(res);
+        Logger::log(std::string(PQerrorMessage(conn_)), "ERROR");
         throw std::runtime_error("Failed to start transaction: " + std::string(PQerrorMessage(conn_)));
     }
 
@@ -104,6 +103,7 @@ void brazier::Database::rollback(const std::string name)
         std::string error = PQerrorMessage(conn_);
         PQclear(res);
         in_transaction_ = false;
+        Logger::log(error, "ERROR");
         throw std::runtime_error("Failed to rollback: " + error);
     }
 
@@ -117,11 +117,10 @@ void brazier::Database::rollback(const std::string name)
 void brazier::Database::commit()
 {
     PGresult* res = PQexec(conn_, "COMMIT");
-    Logger::log("Commit transaction", "INFO");
 
     if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-        Logger::log(std::string(PQerrorMessage(conn_)), "ERROR");
         PQclear(res);
+        Logger::log(std::string(PQerrorMessage(conn_)), "ERROR");
         throw std::runtime_error("Failed to commit: " + std::string(PQerrorMessage(conn_)));
     }
 
@@ -151,7 +150,6 @@ std::string Database::query(const std::string& sql) {
     }
 
     PQclear(res);
-    Logger::log("Successfull query execution", "INFO");
     return result;
 }
 /*
@@ -165,9 +163,12 @@ std::vector<std::map<std::string, std::string>> Database::queryToVector(
 {
     size_t param_count = std::count(sql_template.begin(), sql_template.end(), '?');
     if (param_count != params.size()) {
-        throw std::runtime_error("Parameter count mismatch. Expected " +
+        std::string message = "Parameter count mismatch. Expected " +
             std::to_string(param_count) +
-            ", got " + std::to_string(params.size()));
+            ", got " + std::to_string(params.size());
+
+        Logger::log(message, "ERROR");
+        throw std::runtime_error(message);
     }
 
     std::string sql = sql_template;
@@ -180,7 +181,6 @@ std::vector<std::map<std::string, std::string>> Database::queryToVector(
     }
 
     PGresult* res = PQexec(conn_, sql.c_str());
-    Logger::log("SQL Query: " + sql, "INFO");
 
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
         Logger::log(std::string(PQerrorMessage(conn_)), "ERROR");
@@ -220,9 +220,12 @@ std::map<std::string, std::string> Database::queryMap(
 
     size_t param_count = std::count(sql_template.begin(), sql_template.end(), '?');
     if (param_count != params.size()) {
-        throw std::runtime_error("Parameter count mismatch. Expected " +
+        std::string message = "Parameter count mismatch. Expected " +
             std::to_string(param_count) +
-            ", got " + std::to_string(params.size()));
+            ", got " + std::to_string(params.size());
+
+        Logger::log(message, "ERROR");
+        throw std::runtime_error(message);
     }
 
     std::string sql = sql_template;
@@ -235,7 +238,6 @@ std::map<std::string, std::string> Database::queryMap(
     }
 
     PGresult* res = PQexec(conn_, sql.c_str());
-    Logger::log("SQL Query: " + sql, "INFO");
     std::map<std::string, std::string> row;
 
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {

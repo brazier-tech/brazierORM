@@ -25,7 +25,6 @@
 #include <memory>
 #include "../../include/Database.hpp"
 #include "../../include/Model.hpp"
-#include "../../include/Logger.hpp"
 #include "../config/config.hpp"
 
 using namespace brazier;
@@ -43,10 +42,11 @@ public:
 	TestModel(const std::shared_ptr<Database>& db) : Model<TestModel>(db) {}
 };
 
+static inline std::shared_ptr<Database> db_ptr = std::make_shared<Database>(db_host, db_port, db_user, db_password, db_name);
+
 TEST(DatabaseTest, ConnectionTest) {
 	try {
-		Database db(db_host, db_port, db_user, db_password, db_name);
-		EXPECT_NE(db.getConnection(), nullptr);
+		EXPECT_NE(db_ptr->getConnection(), nullptr);
 	}
 	catch (const std::exception& e) {
 		FAIL() << e.what();
@@ -55,8 +55,7 @@ TEST(DatabaseTest, ConnectionTest) {
 
 TEST(DatabaseTest, ExecuteQueryTest) {
 	try {
-		Database db(db_host, db_port, db_user, db_password, db_name);
-		db.execute("CREATE TABLE IF NOT EXISTS test_table (id_test SERIAL PRIMARY KEY, test VARCHAR(255), description TEXT);");
+		db_ptr->execute("CREATE TABLE IF NOT EXISTS test_table (id_test SERIAL PRIMARY KEY, test VARCHAR(255), description TEXT);");
 	}
 	catch (const std::exception& e) {
 		FAIL() << e.what();
@@ -65,8 +64,7 @@ TEST(DatabaseTest, ExecuteQueryTest) {
 
 TEST(DatabaseTest, ModelSaveTest) {
 	try {
-		std::shared_ptr<Database> db = std::make_shared<Database>(db_host, db_port, db_user, db_password, db_name);
-		TestModel model(db);
+		TestModel model(db_ptr);
 		model.setAttribute("test", "Sample Test");
 		model.setAttribute("description", "This is a sample description.");
 		model.setAttribute("description", "This is a sample description.");
@@ -79,8 +77,7 @@ TEST(DatabaseTest, ModelSaveTest) {
 
 TEST(DatabaseTest, ModelFindTest) {
 	try {
-		std::shared_ptr<Database> db = std::make_shared<Database>(db_host, db_port, db_user, db_password, db_name);
-		auto model = TestModel::find(1, db);
+		auto model = TestModel::find(1, db_ptr);
 		EXPECT_NE(model, nullptr);
 		EXPECT_EQ(model->getAttribute("test"), "Sample Test");
 	}
@@ -91,8 +88,8 @@ TEST(DatabaseTest, ModelFindTest) {
 
 TEST(DatabaseTest, ModelUpdateTest) {
 	try {
-		TestModel::update(1, { {"test", "Updated Test"}, {"description", "Updated description."} }, std::make_shared<Database>(db_host, db_port, db_user, db_password, db_name));
-		auto model = TestModel::find(1, std::make_shared<Database>(db_host, db_port, db_user, db_password, db_name));
+		TestModel::update(1, { {"test", "Updated Test"}, {"description", "Updated description."} }, db_ptr);
+		auto model = TestModel::find(1, db_ptr);
 		EXPECT_EQ(model->getAttribute("test"), "Updated Test");
 		EXPECT_EQ(model->getAttribute("description"), "Updated description.");
 	}
@@ -103,10 +100,10 @@ TEST(DatabaseTest, ModelUpdateTest) {
 
 TEST(DatabaseTest, ModelDeleteTest) {
 	try {
-		auto model = TestModel::find(1, std::make_shared<Database>(db_host, db_port, db_user, db_password, db_name));
+		auto model = TestModel::find(1, db_ptr);
 		ASSERT_NE(model, nullptr);
 		model->delete_();
-		auto deletedModel = TestModel::find(1, std::make_shared<Database>(db_host, db_port, db_user, db_password, db_name));
+		auto deletedModel = TestModel::find(1, db_ptr);
 		EXPECT_EQ(deletedModel, nullptr);
 	}
 	catch (const std::exception& e) {
@@ -116,8 +113,7 @@ TEST(DatabaseTest, ModelDeleteTest) {
 
 TEST(DatabaseTest, CleanupTest) {
 	try {
-		Database db(db_host, db_port, db_user, db_password, db_name);
-		db.execute("DROP TABLE IF EXISTS test_table;");
+		db_ptr->execute("DROP TABLE IF EXISTS test_table;");
 	}
 	catch (const std::exception& e) {
 		FAIL() << e.what();
