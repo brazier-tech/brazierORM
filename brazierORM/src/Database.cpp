@@ -26,6 +26,7 @@ Database::Database(std::string db_host, std::string db_port, std::string db_user
     std::string connection_string = "host=" + db_host + " user=" + db_user + " password=" + db_password + " dbname=" + db_name + " client_encoding=UTF8";
     conn_ = PQconnectdb(connection_string.c_str());
     if (PQstatus(conn_) != CONNECTION_OK) {
+        Logger::log(std::string(PQerrorMessage(conn_)), "ERROR");
         throw std::runtime_error("Connection failed: " + std::string(PQerrorMessage(conn_)));
     }
 }
@@ -63,6 +64,7 @@ void brazier::Database::transaction(const std::string name)
     }
     else {
         if (!in_transaction_) {
+            Logger::log("Cannot create savepoint outside of a transaction", "ERROR");
             throw std::runtime_error("Cannot create savepoint outside of a transaction");
         }
         sql = "SAVEPOINT \"" + name + "\"";
@@ -71,8 +73,8 @@ void brazier::Database::transaction(const std::string name)
     PGresult* res = PQexec(conn_, sql.c_str());
 
     if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-        Logger::log(std::string(PQerrorMessage(conn_)), "ERROR");
         PQclear(res);
+        Logger::log(std::string(PQerrorMessage(conn_)), "ERROR");
         throw std::runtime_error("Failed to start transaction: " + std::string(PQerrorMessage(conn_)));
     }
 
@@ -101,6 +103,7 @@ void brazier::Database::rollback(const std::string name)
         std::string error = PQerrorMessage(conn_);
         PQclear(res);
         in_transaction_ = false;
+        Logger::log(error, "ERROR");
         throw std::runtime_error("Failed to rollback: " + error);
     }
 
@@ -116,8 +119,8 @@ void brazier::Database::commit()
     PGresult* res = PQexec(conn_, "COMMIT");
 
     if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-        Logger::log(std::string(PQerrorMessage(conn_)), "ERROR");
         PQclear(res);
+        Logger::log(std::string(PQerrorMessage(conn_)), "ERROR");
         throw std::runtime_error("Failed to commit: " + std::string(PQerrorMessage(conn_)));
     }
 
@@ -160,9 +163,12 @@ std::vector<std::map<std::string, std::string>> Database::queryToVector(
 {
     size_t param_count = std::count(sql_template.begin(), sql_template.end(), '?');
     if (param_count != params.size()) {
-        throw std::runtime_error("Parameter count mismatch. Expected " +
+        std::string message = "Parameter count mismatch. Expected " +
             std::to_string(param_count) +
-            ", got " + std::to_string(params.size()));
+            ", got " + std::to_string(params.size());
+
+        Logger::log(message, "ERROR");
+        throw std::runtime_error(message);
     }
 
     std::string sql = sql_template;
@@ -214,9 +220,12 @@ std::map<std::string, std::string> Database::queryMap(
 
     size_t param_count = std::count(sql_template.begin(), sql_template.end(), '?');
     if (param_count != params.size()) {
-        throw std::runtime_error("Parameter count mismatch. Expected " +
+        std::string message = "Parameter count mismatch. Expected " +
             std::to_string(param_count) +
-            ", got " + std::to_string(params.size()));
+            ", got " + std::to_string(params.size());
+
+        Logger::log(message, "ERROR");
+        throw std::runtime_error(message);
     }
 
     std::string sql = sql_template;

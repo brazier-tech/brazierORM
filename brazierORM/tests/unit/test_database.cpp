@@ -78,7 +78,7 @@ TEST(DatabaseTest, ModelSaveTest) {
 TEST(DatabaseTest, ModelFindTest) {
 	try {
 		auto model = TestModel::find(1, db_ptr);
-		ASSERT_NE(model, nullptr);
+		EXPECT_NE(model, nullptr);
 		EXPECT_EQ(model->getAttribute("test"), "Sample Test");
 	}
 	catch (const std::exception& e) {
