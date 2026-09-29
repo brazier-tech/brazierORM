@@ -48,20 +48,43 @@ public:
 		queries.push_back(builder.AddUniqueConstraint("uq_email", { "email" }));
 		queries.push_back(builder.AddIndex("idx_name", { "name" }));
 			
-		return std::vector<std::string>();
+		return queries;
 	}
 
 	static std::string down() {
 		SQLSchemaBuilder builder("test_migration");
-		builder.DropTable();
-		return std::string();
+		return builder.DropTable();
 	}
 };
+
+TEST(MigrationsTest, InitMigrationsSubsystem) {
+	try {
+		MigrationManager::init(db);
+
+		MigrationManager manager(db);
+		bool status = manager.hasTable();
+		EXPECT_EQ(status, true);
+	}
+	catch (std::exception& e) {
+		FAIL() << e.what();
+	}
+}
 
 TEST(MigrationsTest, MigrateTest) {
 	try {
 		MigrationManager manager(db);
 		manager.migrateAll<CreateTestTable>();
+	}
+	catch (std::exception& e) {
+		FAIL() << e.what();
+	}
+}
+
+TEST(MigrationsTest, DropTableTest) {
+	try {
+		MigrationManager manager(db);
+		manager.rollback<CreateTestTable>();
+		manager.unmarkMigration<CreateTestTable>();
 	}
 	catch (std::exception& e) {
 		FAIL() << e.what();

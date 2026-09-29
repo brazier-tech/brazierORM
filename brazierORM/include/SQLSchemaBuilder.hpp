@@ -42,13 +42,15 @@ namespace brazier {
 
     public:
         explicit SQLSchemaBuilder(const std::string& table);
+
         SQLSchemaBuilder& AddColumn(const std::string& columnDefinition);
         SQLSchemaBuilder& AddPrimaryKey(const std::string& column);
         SQLSchemaBuilder& AddForeignKey(const std::string& column, const std::string& referenceTable, const std::string& referenceColumn);
+        SQLSchemaBuilder& AlterColumn(const std::string& columnDefinition);
+        SQLSchemaBuilder& DropColumn(const std::string& column);
+
         std::string AddIndex(const std::string& indexName, const std::vector<std::string>& columns);
         std::string AddUniqueConstraint(const std::string& constraintName, const std::vector<std::string>& columns);
-        SQLSchemaBuilder& DropColumn(const std::string& column);
-        SQLSchemaBuilder& AlterColumn(const std::string& columnDefinition);
         std::string CreateTable();
         std::string DropTable();
     };

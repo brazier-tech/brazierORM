@@ -62,8 +62,41 @@ void MigrationManager::executeQueries(const std::vector<std::string>& queries) {
     }
 }
 
-void MigrationManager::Initialize() {
-    this->migrateAll<
+bool MigrationManager::hasTable() {
+    try {
+        db.execute("select id from migrations;");
+        return true;
+    }
+    catch (...) {
+        return false;
+    }
+}
 
-    >();
+void MigrationManager::markAsExecuted(std::string name) {
+    this->markMigrationAsExecuted(name);
+}
+
+void MigrationManager::unmarkMigration(std::string name) {
+    this->unmarkMigrationAsExecuted(name);
+}
+
+void MigrationManager::init(Database& db) {
+    try {
+        std::string name = typeid(CreateMigrationTable).name();
+        db.transaction("");
+        db.transaction("migration_" + name);
+
+        auto queries = CreateMigrationTable::up();
+        for (const auto& query : queries) {
+            db.execute(query);
+        }
+
+        db.commit();
+        Logger::log("Migration completed: " + name, "INFO");
+    }
+    catch (std::exception& e) {
+        Logger::log(e.what(), "ERROR");
+        throw std::runtime_error(e.what());
+    }
+
 }

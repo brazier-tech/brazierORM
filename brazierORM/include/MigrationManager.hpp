@@ -29,9 +29,31 @@
 #include <typeinfo>
 #include "Database.hpp"
 #include "SQLSchemaBuilder.hpp"
+#include "BaseMigration.hpp"
 #include "Logger.hpp"
 
 namespace brazier {
+
+    class CreateMigrationTable : public BaseMigration<CreateMigrationTable> {
+    public:
+        static std::vector<std::string> up() {
+            SQLSchemaBuilder builder("migrations");
+            std::vector<std::string> queries;
+
+            queries.push_back(
+                builder.AddColumn("id serial")
+                .AddColumn("name varchar(255) unique")
+                .CreateTable()
+            );
+
+            return queries;
+        }
+
+        static std::string down() {
+            SQLSchemaBuilder builder("migrations");
+            return builder.DropTable();
+        }
+    };
 
     class MigrationManager {
     private:
@@ -45,6 +67,29 @@ namespace brazier {
 
     public:
         MigrationManager(Database& db);
+
+        void markAsExecuted(std::string name);
+        void unmarkMigration(std::string name);
+        bool hasTable();
+
+        /*
+            @brief This function performs the migration without checking for a record in the `migrations` table.
+        */
+        template <typename Migration>
+        void migrateUnsafe() {
+            std::string name = typeid(Migration).name();
+
+            try {
+                auto queries = Migration::up();
+                for (const auto& query : queries) {
+                    db.execute(query);
+                }
+            }
+            catch (const std::exception& e) {
+                Logger::log("Migration failed: " + name + " - " + e.what(), "ERROR");
+                throw std::runtime_error(e.what());
+            }
+        }
 
         template <typename Migration>
         void migrate() {
@@ -134,5 +179,22 @@ namespace brazier {
         }
 
         void Initialize();
+
+        template <typename Migration>
+        void markAsExecuted() {
+            std::string name = typeid(Migration).name();
+            this->markMigrationAsExecuted(name);
+        }
+
+        template <typename Migration>
+        void unmarkMigration() {
+            std::string name = typeid(Migration).name();
+            this->unmarkMigrationAsExecuted(name);
+        }
+
+        /*
+            @brief This function is required for the initial initialization of the migration subsystem. It creates the `migrations` table.
+        */
+        static void init(Database& db);
     };
 }
