@@ -178,8 +178,6 @@ namespace brazier {
             (rollback<Migrations>(), ...);
         }
 
-        void Initialize();
-
         template <typename Migration>
         void markAsExecuted() {
             std::string name = typeid(Migration).name();
