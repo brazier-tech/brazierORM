@@ -47,7 +47,7 @@ public:
 
 		queries.push_back(builder.AddUniqueConstraint("uq_email", { "email" }));
 		queries.push_back(builder.AddIndex("idx_name", { "name" }));
-			
+
 		return queries;
 	}
 
@@ -57,12 +57,33 @@ public:
 	}
 };
 
-TEST(MigrationsTest, InitMigrationsSubsystem) {
-	try {
-		MigrationManager::init(db);
+class MigrationsTest : public ::testing::Test {
+public:
+	static inline std::unique_ptr<MigrationManager> manager = nullptr;
 
-		MigrationManager manager(db);
-		bool status = manager.hasTable();
+	static void SetUpTestSuite() {
+		try {
+			MigrationManager::init(db);
+			manager = std::make_unique<MigrationManager>(db);
+		}
+		catch (std::exception& e) {
+			FAIL() << e.what();
+		};
+	}
+
+	static void TearDownTestSuite() {
+		try {
+			db.execute(CreateMigrationTable::down());
+		}
+		catch (std::exception& e) {
+			FAIL() << e.what();
+		}
+	}
+};
+
+TEST_F(MigrationsTest, InitMigrationsSubsystem) {
+	try {
+		bool status = manager->hasTable();
 		EXPECT_EQ(status, true);
 	}
 	catch (std::exception& e) {
@@ -70,21 +91,19 @@ TEST(MigrationsTest, InitMigrationsSubsystem) {
 	}
 }
 
-TEST(MigrationsTest, MigrateTest) {
+TEST_F(MigrationsTest, MigrateTest) {
 	try {
-		MigrationManager manager(db);
-		manager.migrateAll<CreateTestTable>();
+		manager->migrateAll<CreateTestTable>();
 	}
 	catch (std::exception& e) {
 		FAIL() << e.what();
 	}
 }
 
-TEST(MigrationsTest, DropTableTest) {
+TEST_F(MigrationsTest, DropTableTest) {
 	try {
-		MigrationManager manager(db);
-		manager.rollback<CreateTestTable>();
-		manager.unmarkMigration<CreateTestTable>();
+		manager->rollback<CreateTestTable>();
+		manager->unmarkMigration<CreateTestTable>();
 	}
 	catch (std::exception& e) {
 		FAIL() << e.what();
