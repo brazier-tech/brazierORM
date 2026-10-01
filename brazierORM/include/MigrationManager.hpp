@@ -43,6 +43,7 @@ namespace brazier {
             queries.push_back(
                 builder.AddColumn("id serial")
                 .AddColumn("name varchar(255) unique")
+                .AddColumn("down text not null")
                 .CreateTable()
             );
 
@@ -57,19 +58,23 @@ namespace brazier {
 
     class MigrationManager {
     private:
+        struct migration {
+            std::string name;
+            std::string down;
+        };
+
         Database& db;
-        std::unordered_set<std::string> executedMigrations;
+        std::unordered_set<migration> executedMigrations;
 
         bool isMigrationExecuted(const std::string& name);
-        void markMigrationAsExecuted(const std::string& name);
         void unmarkMigrationAsExecuted(const std::string& name);
         void executeQueries(const std::vector<std::string>& queries);
 
     public:
         MigrationManager(Database& db);
 
-        void markAsExecuted(std::string name);
         void unmarkMigration(std::string name);
+        void rollbackAll();
         bool hasTable();
 
         /*
@@ -109,7 +114,7 @@ namespace brazier {
                     db.execute(query);
                 }
 
-                markMigrationAsExecuted(name);
+                markAsExecuted<Migration>();
                 db.commit();
                 Logger::log("Migration completed: " + name, "INFO");
             }
@@ -181,7 +186,8 @@ namespace brazier {
         template <typename Migration>
         void markAsExecuted() {
             std::string name = typeid(Migration).name();
-            this->markMigrationAsExecuted(name);
+            db.execute("INSERT INTO migrations (name, down) VALUES ('" + name + "', '" + Migration::down() + "');");
+            executedMigrations.insert({ name, Migration::down() });
         }
 
         template <typename Migration>

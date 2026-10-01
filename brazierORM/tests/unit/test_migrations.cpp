@@ -23,39 +23,15 @@
 #include <vector>
 #include <string>
 #include <memory>
-#include "../../include/BaseMigration.hpp"
 #include "../../include/MigrationManager.hpp"
 #include "../../include/Database.hpp"
 #include "../../include/Model.hpp"
 #include "../config/config.hpp"
+#include "../include/migrations.hpp"
 
 using namespace brazier;
 
 static inline Database db(db_host, db_port, db_user, db_password, db_name);
-
-class CreateTestTable : public BaseMigration<CreateTestTable> {
-public:
-	static std::vector<std::string> up() {
-		SQLSchemaBuilder builder("test_migration");
-		std::vector<std::string> queries;
-
-		queries.push_back(builder
-			.AddColumn("name varchar(255)")
-			.AddColumn("email varchar(255)")
-			.CreateTable()
-		);
-
-		queries.push_back(builder.AddUniqueConstraint("uq_email", { "email" }));
-		queries.push_back(builder.AddIndex("idx_name", { "name" }));
-
-		return queries;
-	}
-
-	static std::string down() {
-		SQLSchemaBuilder builder("test_migration");
-		return builder.DropTable();
-	}
-};
 
 class MigrationsTest : public ::testing::Test {
 public:
@@ -73,6 +49,7 @@ public:
 
 	static void TearDownTestSuite() {
 		try {
+			manager->rollbackAll();
 			db.execute(CreateMigrationTable::down());
 		}
 		catch (std::exception& e) {

@@ -24,15 +24,16 @@ using namespace brazier;
 
 MigrationManager::MigrationManager(Database& db) : db(db) {
     try {
-        auto result = db.queryToVector("SELECT name FROM migrations;");
+        std::vector<std::map<std::string, std::string>> result = db.queryToVector("SELECT name, down FROM migrations;");
 
-        for (const auto& row : result) {
-            auto it = row.find("name");
-            if (it != row.end()) {
-                executedMigrations.insert(it->second);
+        for (std::map<std::string, std::string>& row : result) {
+            auto name_it = row.find("name");
+            auto down_it = row.find("down");
+            if (name_it != row.end() && down_it != row.end()) {
+                executedMigrations.insert(migration{ name_it->second, down_it->second });
             }
             else {
-                Logger::log("Column 'name' not found in row", "Warning");
+                Logger::log("Column 'name' or 'down' not found in row", "Warning");
             }
         }
     }
@@ -43,17 +44,17 @@ MigrationManager::MigrationManager(Database& db) : db(db) {
 }
 
 bool MigrationManager::isMigrationExecuted(const std::string& name) {
-    return executedMigrations.find(name) != executedMigrations.end();
-}
+    for (auto& i : executedMigrations)
+        if (i.name == name) return true;
 
-void MigrationManager::markMigrationAsExecuted(const std::string& name) {
-    db.execute("INSERT INTO migrations (name) VALUES ('" + name + "');");
-    executedMigrations.insert(name);
+    return false;
 }
 
 void MigrationManager::unmarkMigrationAsExecuted(const std::string& name) {
     db.execute("DELETE FROM migrations WHERE name = '" + name + "';");
-    executedMigrations.erase(name);
+
+    for (auto& i : executedMigrations)
+        if (i.name == name) executedMigrations.erase(i);
 }
 
 void MigrationManager::executeQueries(const std::vector<std::string>& queries) {
@@ -70,10 +71,6 @@ bool MigrationManager::hasTable() {
     catch (...) {
         return false;
     }
-}
-
-void MigrationManager::markAsExecuted(std::string name) {
-    this->markMigrationAsExecuted(name);
 }
 
 void MigrationManager::unmarkMigration(std::string name) {
@@ -98,5 +95,9 @@ void MigrationManager::init(Database& db) {
         Logger::log(e.what(), "ERROR");
         throw std::runtime_error(e.what());
     }
+
+}
+
+void MigrationManager::rollbackAll() {
 
 }
