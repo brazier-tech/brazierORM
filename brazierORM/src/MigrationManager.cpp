@@ -30,7 +30,7 @@ MigrationManager::MigrationManager(Database& db) : db(db) {
             auto name_it = row.find("name");
             auto down_it = row.find("down");
             if (name_it != row.end() && down_it != row.end()) {
-                executedMigrations.insert(migration{ name_it->second, down_it->second });
+                executedMigrations.push_back(migration{ name_it->second, down_it->second });
             }
             else {
                 Logger::log("Column 'name' or 'down' not found in row", "Warning");
@@ -53,8 +53,8 @@ bool MigrationManager::isMigrationExecuted(const std::string& name) {
 void MigrationManager::unmarkMigrationAsExecuted(const std::string& name) {
     db.execute("DELETE FROM migrations WHERE name = '" + name + "';");
 
-    for (auto& i : executedMigrations)
-        if (i.name == name) executedMigrations.erase(i);
+    std::erase_if(executedMigrations, [&](migration& m) {
+        return m.name == name; });
 }
 
 void MigrationManager::executeQueries(const std::vector<std::string>& queries) {
@@ -99,5 +99,18 @@ void MigrationManager::init(Database& db) {
 }
 
 void MigrationManager::rollbackAll() {
+    for (auto it = executedMigrations.rbegin(); it != executedMigrations.rend(); ++it) {
+        try {
+            db.transaction("");
+            db.execute(it->down);
+            db.commit();
+        }
+        catch (std::exception& e) {
+            db.rollback("");
 
+            throw;
+        }
+    }
+
+    executedMigrations.clear();
 }

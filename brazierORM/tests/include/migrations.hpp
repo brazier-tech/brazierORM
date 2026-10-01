@@ -13,7 +13,7 @@ public:
 		std::vector<std::string> queries;
 
 		queries.push_back(builder
-			.AddColumn("id_test serial")
+			.AddColumn("id_test serial primary key")
 			.AddColumn("name varchar(255)")
 			.AddColumn("email varchar(255)")
 			.CreateTable()
@@ -38,8 +38,9 @@ public:
 		std::vector<std::string> q;
 
 		q.push_back(builder
-			.AddColumn("id_test serial")
-			.AddForeignKey("test_id", "test_migration", "")
+			.AddColumn("id_test serial primary key")
+			.AddColumn("test_id integer not null")
+			.AddForeignKey("test_id", "test_migration", "id_test")
 			.AddColumn("large_test_name varchar(255) not null")
 			.AddColumn("type varchar(255)")
 			.CreateTable()
@@ -48,5 +49,9 @@ public:
 		Logger::log(q[0].c_str(), "INFO");
 
 		return q;
+	}
+
+	static std::string down() {
+		return SQLSchemaBuilder("large_test_table").DropTable();
 	}
 };

@@ -50,7 +50,7 @@ public:
 	static void TearDownTestSuite() {
 		try {
 			manager->rollbackAll();
-			db.execute(CreateMigrationTable::down());
+			manager->rollbackUnsafe<CreateMigrationTable>();
 		}
 		catch (std::exception& e) {
 			FAIL() << e.what();
@@ -58,7 +58,7 @@ public:
 	}
 };
 
-TEST_F(MigrationsTest, InitMigrationsSubsystem) {
+TEST_F(MigrationsTest, MigrationManager_init) {
 	try {
 		bool status = manager->hasTable();
 		EXPECT_EQ(status, true);
@@ -68,7 +68,7 @@ TEST_F(MigrationsTest, InitMigrationsSubsystem) {
 	}
 }
 
-TEST_F(MigrationsTest, MigrateTest) {
+TEST_F(MigrationsTest, CreateTestTable_up) {
 	try {
 		manager->migrateAll<CreateTestTable>();
 	}
@@ -77,7 +77,28 @@ TEST_F(MigrationsTest, MigrateTest) {
 	}
 }
 
-TEST_F(MigrationsTest, DropTableTest) {
+TEST_F(MigrationsTest, CreateLargeTestTable_up) {
+	try {
+		manager->migrate<CreateLargeTestTable>();
+		manager->hasTable();
+	}
+	catch (std::exception& e) {
+		FAIL() << e.what();
+	}
+}
+
+TEST_F(MigrationsTest, MigrationManager_RollbackAll) {
+	try {
+		manager->rollbackAll();
+		EXPECT_EQ(false, manager->isExecuted<CreateTestTable>());
+		EXPECT_EQ(false, manager->isExecuted<CreateLargeTestTable>());
+	}
+	catch (std::exception& e) {
+		FAIL() << e.what();
+	}
+}
+
+TEST_F(MigrationsTest, CreateTestTable_down) {
 	try {
 		manager->rollback<CreateTestTable>();
 		manager->unmarkMigration<CreateTestTable>();

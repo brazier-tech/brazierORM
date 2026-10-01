@@ -61,10 +61,12 @@ namespace brazier {
         struct migration {
             std::string name;
             std::string down;
+
+            bool operator==(const migration&) const = default;
         };
 
         Database& db;
-        std::unordered_set<migration> executedMigrations;
+        std::vector<migration> executedMigrations;
 
         bool isMigrationExecuted(const std::string& name);
         void unmarkMigrationAsExecuted(const std::string& name);
@@ -89,6 +91,20 @@ namespace brazier {
                 for (const auto& query : queries) {
                     db.execute(query);
                 }
+            }
+            catch (const std::exception& e) {
+                Logger::log("Migration failed: " + name + " - " + e.what(), "ERROR");
+                throw std::runtime_error(e.what());
+            }
+        }
+
+        template <typename Migration>
+        void rollbackUnsafe() {
+            std::string name = typeid(Migration).name();
+
+            try {
+                std::string query = Migration::down();
+                db.execute(query);
             }
             catch (const std::exception& e) {
                 Logger::log("Migration failed: " + name + " - " + e.what(), "ERROR");
@@ -187,7 +203,7 @@ namespace brazier {
         void markAsExecuted() {
             std::string name = typeid(Migration).name();
             db.execute("INSERT INTO migrations (name, down) VALUES ('" + name + "', '" + Migration::down() + "');");
-            executedMigrations.insert({ name, Migration::down() });
+            executedMigrations.push_back({ name, Migration::down() });
         }
 
         template <typename Migration>
@@ -195,6 +211,12 @@ namespace brazier {
             std::string name = typeid(Migration).name();
             this->unmarkMigrationAsExecuted(name);
         }
+
+		template <typename Migration>
+		bool isExecuted() {
+			std::string name = typeid(Migration).name();
+			return isMigrationExecuted(name);
+		}
 
         /*
             @brief This function is required for the initial initialization of the migration subsystem. It creates the `migrations` table.
