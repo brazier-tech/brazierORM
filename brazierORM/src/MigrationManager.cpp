@@ -98,24 +98,34 @@ void MigrationManager::init(Database& db) {
 
 }
 
-void MigrationManager::rollbackAll() {
-    std::vector<migration>::iterator it = executedMigrations.end();
+bool MigrationManager::rollbackLast() {
+    if (executedMigrations.empty()) return false;
 
-    while (it != executedMigrations.begin()) {
-        try {
-            --it;
-            db.transaction("");
-            
-            db.execute(it->down);
-            
-            db.commit();
-        }
-        catch (std::exception& e) {
-            db.rollback("");
+    migration& m = executedMigrations.back();
+    
+    try {
+        db.transaction("");
+        db.execute(m.down);
+        db.execute("delete from migrations where name = '" + m.name + "';");
+        db.commit();
 
-            throw;
-        }
+        executedMigrations.pop_back();
+        return true;
     }
+    catch (std::exception& e) {
+        Logger::log(e.what(), "ERROR");
+        throw;
+    }
+}
 
-    executedMigrations.clear();
+void MigrationManager::rollbackAll() {
+    try {
+        while (rollbackLast()){}
+        db.execute("truncate table migrations;");
+    }
+    catch (std::exception& e) {
+        Logger::log(e.what(), "ERROR");
+
+        throw;
+    }
 }

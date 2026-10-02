@@ -77,6 +77,7 @@ namespace brazier {
 
         void unmarkMigration(std::string name);
         void rollbackAll();
+        bool rollbackLast();
         bool hasTable();
 
         /*
