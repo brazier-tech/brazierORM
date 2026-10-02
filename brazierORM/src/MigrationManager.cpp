@@ -99,10 +99,15 @@ void MigrationManager::init(Database& db) {
 }
 
 void MigrationManager::rollbackAll() {
-    for (auto it = executedMigrations.rbegin(); it != executedMigrations.rend(); ++it) {
+    std::vector<migration>::iterator it = executedMigrations.end();
+
+    while (it != executedMigrations.begin()) {
         try {
+            --it;
             db.transaction("");
+            
             db.execute(it->down);
+            
             db.commit();
         }
         catch (std::exception& e) {

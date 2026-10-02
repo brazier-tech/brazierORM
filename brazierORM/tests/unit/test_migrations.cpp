@@ -100,7 +100,9 @@ TEST_F(MigrationsTest, MigrationManager_RollbackAll) {
 
 TEST_F(MigrationsTest, CreateTestTable_down) {
 	try {
+		manager->migrate<CreateTestTable>();
 		manager->rollback<CreateTestTable>();
+
 		manager->unmarkMigration<CreateTestTable>();
 	}
 	catch (std::exception& e) {
