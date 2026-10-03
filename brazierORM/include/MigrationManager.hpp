@@ -89,11 +89,16 @@ namespace brazier {
 
             try {
                 auto queries = Migration::up();
+				db.transaction("");
+
                 for (const auto& query : queries) {
                     db.execute(query);
                 }
+
+                db.commit();
             }
             catch (const std::exception& e) {
+				db.rollback("");
                 Logger::log("Migration failed: " + name + " - " + e.what(), "ERROR");
                 throw std::runtime_error(e.what());
             }
@@ -105,9 +110,12 @@ namespace brazier {
 
             try {
                 std::string query = Migration::down();
+				db.transaction("");
                 db.execute(query);
+				db.commit();
             }
             catch (const std::exception& e) {
+                db.rollback("");
                 Logger::log("Migration failed: " + name + " - " + e.what(), "ERROR");
                 throw std::runtime_error(e.what());
             }
