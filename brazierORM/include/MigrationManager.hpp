@@ -118,7 +118,6 @@ namespace brazier {
             std::string name = typeid(Migration).name();
 
             if (isMigrationExecuted(name)) {
-                Logger::log("Migration already executed: " + name, "INFO");
                 return;
             }
 
@@ -133,7 +132,6 @@ namespace brazier {
 
                 markAsExecuted<Migration>();
                 db.commit();
-                Logger::log("Migration completed: " + name, "INFO");
             }
             catch (const std::exception& e) {
                 if (db.isInTransaction()) {
@@ -171,7 +169,6 @@ namespace brazier {
                 unmarkMigrationAsExecuted(name);
 
                 db.commit();
-                Logger::log("Migration rolled back: " + name, "INFO");
             }
             catch (const std::exception& e) {
                 try {

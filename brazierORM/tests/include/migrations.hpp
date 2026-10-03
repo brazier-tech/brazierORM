@@ -46,8 +46,6 @@ public:
 			.CreateTable()
 		);
 
-		Logger::log(q[0].c_str(), "INFO");
-
 		return q;
 	}
 

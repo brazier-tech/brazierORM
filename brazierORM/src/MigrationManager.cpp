@@ -89,7 +89,6 @@ void MigrationManager::init(Database& db) {
         }
 
         db.commit();
-        Logger::log("Migration completed: " + name, "INFO");
     }
     catch (std::exception& e) {
         Logger::log(e.what(), "ERROR");

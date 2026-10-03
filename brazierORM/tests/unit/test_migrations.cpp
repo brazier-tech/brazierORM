@@ -56,6 +56,15 @@ public:
 			FAIL() << e.what();
 		}
 	}
+
+	void TearDown() override {
+		try {
+			manager->rollbackAll();
+		}
+		catch (std::exception& e) {
+			FAIL() << e.what();
+		}
+	}
 };
 
 TEST_F(MigrationsTest, MigrationManager_init) {
@@ -79,6 +88,7 @@ TEST_F(MigrationsTest, CreateTestTable_up) {
 
 TEST_F(MigrationsTest, CreateLargeTestTable_up) {
 	try {
+		manager->migrate<CreateTestTable>();
 		manager->migrate<CreateLargeTestTable>();
 		manager->hasTable();
 	}
