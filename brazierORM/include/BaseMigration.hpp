@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (c) 2026 Kirill Sergeev, Nikolay Sugonyako, Andrey Agarkov, Gleb Safyannikov
  * SPDX-License-Identifier: LGPL-3.0-or-later
  *
@@ -18,11 +18,25 @@
  * along with brazier; if not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "main.h"
+#pragma once
+#include <string>
+#include "SQLSchemaBuilder.hpp"
 
-int main(int argc, char** argv) {
-	setlocale(LC_ALL, ".OCP");
+namespace brazier {
 
-    testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
+	template <typename Derived>
+	class BaseMigration {
+
+
+	public:
+		virtual ~BaseMigration() = default;
+
+		static std::vector<std::string> up() {
+			return Derived::up();
+		}
+
+		static std::string down() {
+			return Derived::down();
+		}
+	};
 }

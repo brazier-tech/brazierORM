@@ -10,7 +10,7 @@ using namespace brazier;
 
 int main()
 {
-	setlocale(LC_ALL, "Russian");
+	setlocale(LC_ALL, ".OCP");
 	try {
 		Database db("localhost", "5432", "test", "test", "test");
 	}
