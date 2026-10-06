@@ -128,3 +128,7 @@ void MigrationManager::rollbackAll(int limit = -1) {
         throw;
     }
 }
+
+void MigrationManager::rollbackAll() {
+    this->rollbackAll(-1);
+}

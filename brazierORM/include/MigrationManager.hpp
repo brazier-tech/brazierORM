@@ -76,6 +76,7 @@ namespace brazier {
         MigrationManager(Database& db);
 
         void unmarkMigration(std::string name);
+        void rollbackAll();
         void rollbackAll(int limit);
         bool rollbackLast();
         bool hasTable();
