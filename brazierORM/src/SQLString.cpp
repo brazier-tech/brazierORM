@@ -24,9 +24,11 @@ using namespace brazier;
 
 std::string SQLString::EscapeString(PGconn* conn, const std::string& input) {
     char* escaped = PQescapeLiteral(conn, input.c_str(), input.size());
+
     if (!escaped) {
-        return "'ERROR: FAILED TO ESCAPE STRING'";
+        throw std::runtime_error("Failed to escape string");
     }
+
     std::string result(escaped);
     PQfreemem(escaped);
     return result;
@@ -34,9 +36,11 @@ std::string SQLString::EscapeString(PGconn* conn, const std::string& input) {
 
 std::string SQLString::EscapeIdentifier(PGconn* conn, const std::string& input) {
     char* escaped = PQescapeIdentifier(conn, input.c_str(), input.size());
+
     if (!escaped) {
-        return "\"ERROR: FAILED TO ESCAPE IDENTIFIER\"";
+        throw std::runtime_error("Failed to escape identifier");
     }
+
     std::string result(escaped);
     PQfreemem(escaped);
     return result;

@@ -152,6 +152,7 @@ std::string Database::query(const std::string& sql) {
     PQclear(res);
     return result;
 }
+
 /*
     @brief Executes a SQL query with parameters and returns the result as a vector of maps.
     @param sql_template The SQL query template with placeholders for parameters (use '?' for placeholders).

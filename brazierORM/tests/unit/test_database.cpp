@@ -29,7 +29,7 @@
 
 using namespace brazier;
 
-class TestModel : public Model<TestModel> {
+class TestModelDB : public Model<TestModelDB> {
 public:
 	static inline std::string table_name = "test_table";
 	static inline std::string primary_key = "id_test";
@@ -38,8 +38,8 @@ public:
 	static inline std::vector<std::string> fields = { "id_test", "test", "description" };
 
 
-	TestModel() = default;
-	TestModel(const std::shared_ptr<Database>& db) : Model<TestModel>(db) {}
+	TestModelDB() = default;
+	TestModelDB(const std::shared_ptr<Database>& db) : Model<TestModelDB>(db) {}
 };
 
 static inline std::shared_ptr<Database> db_ptr = std::make_shared<Database>(db_host, db_port, db_user, db_password, db_name);
@@ -64,7 +64,7 @@ TEST(DatabaseTest, ExecuteQueryTest) {
 
 TEST(DatabaseTest, ModelSaveTest) {
 	try {
-		TestModel model(db_ptr);
+		TestModelDB model(db_ptr);
 		model.setAttribute("test", "Sample Test");
 		model.setAttribute("description", "This is a sample description.");
 		model.setAttribute("description", "This is a sample description.");
@@ -77,7 +77,7 @@ TEST(DatabaseTest, ModelSaveTest) {
 
 TEST(DatabaseTest, ModelFindTest) {
 	try {
-		auto model = TestModel::find(1, db_ptr);
+		auto model = TestModelDB::find(1, db_ptr);
 		EXPECT_NE(model, nullptr);
 		EXPECT_EQ(model->getAttribute("test"), "Sample Test");
 	}
@@ -88,8 +88,8 @@ TEST(DatabaseTest, ModelFindTest) {
 
 TEST(DatabaseTest, ModelUpdateTest) {
 	try {
-		TestModel::update(1, { {"test", "Updated Test"}, {"description", "Updated description."} }, db_ptr);
-		auto model = TestModel::find(1, db_ptr);
+		TestModelDB::update(1, { {"test", "Updated Test"}, {"description", "Updated description."} }, db_ptr);
+		auto model = TestModelDB::find(1, db_ptr);
 		EXPECT_EQ(model->getAttribute("test"), "Updated Test");
 		EXPECT_EQ(model->getAttribute("description"), "Updated description.");
 	}
@@ -100,10 +100,10 @@ TEST(DatabaseTest, ModelUpdateTest) {
 
 TEST(DatabaseTest, ModelDeleteTest) {
 	try {
-		auto model = TestModel::find(1, db_ptr);
+		auto model = TestModelDB::find(1, db_ptr);
 		ASSERT_NE(model, nullptr);
 		model->delete_();
-		auto deletedModel = TestModel::find(1, db_ptr);
+		auto deletedModel = TestModelDB::find(1, db_ptr);
 		EXPECT_EQ(deletedModel, nullptr);
 	}
 	catch (const std::exception& e) {
