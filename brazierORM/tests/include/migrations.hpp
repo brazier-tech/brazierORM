@@ -25,9 +25,15 @@ public:
 		return queries;
 	}
 
-	static std::string down() {
+	static std::vector<std::string> down() {
 		SQLSchemaBuilder builder("test_migration");
-		return builder.DropTable();
+		std::vector<std::string> q;
+
+		q.push_back(
+			builder.DropTable()
+		);
+
+		return q;
 	}
 };
 
@@ -49,7 +55,13 @@ public:
 		return q;
 	}
 
-	static std::string down() {
-		return SQLSchemaBuilder("large_test_table").DropTable();
+	static std::vector<std::string> down() {
+		std::vector<std::string> q;
+		
+		q.push_back(
+			SQLSchemaBuilder("large_test_table").DropTable()
+		);
+
+		return q;
 	}
 };
