@@ -52,7 +52,7 @@ if(MSVC)
     )
 endif()
 
-option(BUILD_DEMO "Build brazierORM demo executable" OFF)
+option(BUILD_DEMO "Build brazierORM demo executable" ON)
 
 if(BUILD_DEMO)
     add_executable(brazierORM brazierORM.cpp)
@@ -99,7 +99,7 @@ install(FILES
     DESTINATION ${CMAKE_INSTALL_DATADIR}/brazier-orm
 )
 
-option(BUILD_TESTS "Build tests" OFF)
+option(BUILD_TESTS "Build tests" ON)
 
 if(BUILD_TESTS)
     message(STATUS "Building tests")
@@ -124,7 +124,10 @@ if(BUILD_TESTS)
         BOOST_ASIO_HAS_STD_COROUTINE
     )
 
-    target_compile_features(brazier-orm_tests PRIVATE cxx_std_20)
+    set_target_properties(brazier_orm PROPERTIES
+        CXX_STANDARD 20
+        CXX_STANDARD_REQUIRED ON
+    )
 
     target_link_libraries(brazier-orm_tests PRIVATE
         brazier_orm
