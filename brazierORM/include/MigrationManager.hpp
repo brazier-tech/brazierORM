@@ -50,9 +50,15 @@ namespace brazier {
             return queries;
         }
 
-        static std::string down() {
+        static std::vector<std::string> down() {
             SQLSchemaBuilder builder("migrations");
-            return builder.DropTable();
+            std::vector<std::string> q;
+
+            q.push_back(
+                builder.DropTable()
+            );
+
+            return q;
         }
     };
 
@@ -110,9 +116,12 @@ namespace brazier {
             std::string name = typeid(Migration).name();
 
             try {
-                std::string query = Migration::down();
 				db.transaction("");
-                db.execute(query);
+                std::vector<std::string> queries = Migration::down();
+
+                for (std::string& q : queries)
+                    db.execute(q);
+
 				db.commit();
             }
             catch (const std::exception& e) {
@@ -172,8 +181,10 @@ namespace brazier {
             try {
                 db.transaction("");
 
-                std::string mainQuery = Migration::down();
-                db.execute(mainQuery);
+                std::vector<std::string> queries = Migration::down();
+                
+                for (std::string q : queries)
+                    db.execute(q);
 
                 unmarkMigrationAsExecuted(name);
 
@@ -209,8 +220,13 @@ namespace brazier {
         template <typename Migration>
         void markAsExecuted() {
             std::string name = typeid(Migration).name();
-            db.execute("INSERT INTO migrations (name, down) VALUES ('" + name + "', '" + Migration::down() + "');");
-            executedMigrations.push_back({ name, Migration::down() });
+            std::string queries = "";
+
+            for (std::string& q : Migration::down())
+                queries += q;
+
+            db.execute("INSERT INTO migrations (name, down) VALUES ('" + name + "', '" + queries + "');");
+            executedMigrations.push_back({ name, queries });
         }
 
         template <typename Migration>

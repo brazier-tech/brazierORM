@@ -35,7 +35,7 @@ namespace brazier {
 			return Derived::up();
 		}
 
-		static std::string down() {
+		static std::vector<std::string> down() {
 			return Derived::down();
 		}
 	};
