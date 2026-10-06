@@ -25,7 +25,7 @@
 #include <memory>
 #include "../../include/Database.hpp"
 #include "../../include/Model.hpp"
-#include "../config/config.hpp"
+#include "../config/config_example.hpp"
 
 using namespace brazier;
 
