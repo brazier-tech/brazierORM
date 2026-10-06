@@ -119,3 +119,20 @@ TEST_F(MigrationsTest, CreateTestTable_down) {
 		FAIL() << e.what();
 	}
 }
+
+TEST_F(MigrationsTest, MigrationManager_RollBackAll_limit) {
+	try {
+		manager->migrateAll <
+			CreateTestTable,
+			CreateLargeTestTable
+		>();
+		manager->rollbackAll(1);
+
+		EXPECT_EQ(true, manager->isExecuted<CreateTestTable>());
+		EXPECT_EQ(false, manager->isExecuted<CreateLargeTestTable>());
+
+	}
+	catch (std::exception& e) {
+		FAIL() << e.what();
+	}
+}

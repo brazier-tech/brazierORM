@@ -119,7 +119,7 @@ bool MigrationManager::rollbackLast() {
 
 void MigrationManager::rollbackAll(int limit = -1) {
     try {
-        while (rollbackLast() && limit != 0) { limit--; }
+        while (limit && rollbackLast()) { limit--; }
         db.execute("truncate table migrations;");
     }
     catch (std::exception& e) {
