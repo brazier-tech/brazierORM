@@ -47,3 +47,16 @@ public:
 	static inline std::string primary_key = "id_test";
 	static inline std::string table_name = "large_test_table";
 };
+
+class TestModelDB : public Model<TestModelDB> {
+public:
+	static inline std::string table_name = "test_table";
+	static inline std::string primary_key = "id_test";
+
+	static inline std::vector<std::string> fillable = { "test", "description" };
+	static inline std::vector<std::string> fields = { "id_test", "test", "description" };
+
+
+	TestModelDB() = default;
+	TestModelDB(const std::shared_ptr<Database>& db) : Model<TestModelDB>(db) {}
+};

@@ -55,6 +55,30 @@ void brazier::Database::execute(const std::string& query) {
     PQclear(res);
 }
 
+void brazier::Database::execute(const std::string& sql_template, const std::vector<std::string>& params) {
+    size_t param_count = std::count(sql_template.begin(), sql_template.end(), '?');
+
+    std::string sql = sql_template;
+    if (!(validateParams(sql_template, params) && applyParams(sql, params))) {
+        throw std::runtime_error("Failed to validate or apply parameters");
+    }
+
+    PGresult* res = PQexec(conn_, sql.c_str());
+    ExecStatusType status = PQresultStatus(res);
+
+    if (status != PGRES_COMMAND_OK && status != PGRES_TUPLES_OK) {
+        std::string error = PQerrorMessage(conn_);
+        PQclear(res);
+        if (in_transaction_) {
+            PQexec(conn_, "ROLLBACK");
+            in_transaction_ = false;
+        }
+        throw std::runtime_error(error);
+    }
+
+    PQclear(res);
+}
+
 void brazier::Database::transaction(const std::string name)
 {
     std::string sql;
@@ -162,23 +186,9 @@ std::vector<std::map<std::string, std::string>> Database::queryToVector(
     const std::string& sql_template,
     const std::vector<std::string>& params)
 {
-    size_t param_count = std::count(sql_template.begin(), sql_template.end(), '?');
-    if (param_count != params.size()) {
-        std::string message = "Parameter count mismatch. Expected " +
-            std::to_string(param_count) +
-            ", got " + std::to_string(params.size());
-
-        Logger::log(message, "ERROR");
-        throw std::runtime_error(message);
-    }
-
     std::string sql = sql_template;
-    for (const auto& param : params) {
-        size_t pos = sql.find("?");
-        if (pos != std::string::npos) {
-            std::string escaped_param = SQLString::EscapeString(conn_, param);
-            sql.replace(pos, 1, escaped_param);
-        }
+    if (!(validateParams(sql_template, params) && applyParams(sql, params))) {
+        throw std::runtime_error("Failed to validate or apply parameters");
     }
 
     PGresult* res = PQexec(conn_, sql.c_str());
@@ -219,23 +229,9 @@ std::map<std::string, std::string> Database::queryMap(
     const std::string& sql_template,
     const std::vector<std::string>& params) {
 
-    size_t param_count = std::count(sql_template.begin(), sql_template.end(), '?');
-    if (param_count != params.size()) {
-        std::string message = "Parameter count mismatch. Expected " +
-            std::to_string(param_count) +
-            ", got " + std::to_string(params.size());
-
-        Logger::log(message, "ERROR");
-        throw std::runtime_error(message);
-    }
-
     std::string sql = sql_template;
-    for (const auto& param : params) {
-        size_t pos = sql.find("?");
-        if (pos != std::string::npos) {
-            std::string escaped_param = SQLString::EscapeString(conn_, param);
-            sql.replace(pos, 1, escaped_param);
-        }
+    if (!(validateParams(sql_template, params) && applyParams(sql, params))) {
+        throw std::runtime_error("Failed to validate or apply parameters");
     }
 
     PGresult* res = PQexec(conn_, sql.c_str());
@@ -255,4 +251,38 @@ std::map<std::string, std::string> Database::queryMap(
 
     PQclear(res);
     return row;
+}
+
+bool brazier::Database::validateParams(const std::string& sql_template, const std::vector<std::string>& params) {
+    size_t param_count = std::count(sql_template.begin(), sql_template.end(), '?');
+
+    if (param_count != params.size()) {
+        std::string message = "Parameter count mismatch. Expected " +
+            std::to_string(param_count) +
+            ", got " + std::to_string(params.size());
+
+        Logger::log(message, "ERROR");
+        
+        return false;
+    }
+    return true;
+}
+
+bool brazier::Database::applyParams(std::string& sql, const std::vector<std::string>& params) {
+    std::vector<size_t> positions;
+
+    for (size_t pos = sql.find('?'); pos != std::string::npos; pos = sql.find('?', pos + 1)) {
+        positions.push_back(pos);
+    }
+
+    if (positions.size() != params.size()) {
+        return false;
+    }
+
+    for (size_t i = positions.size(); i-- > 0; ) {
+        std::string escaped_param = SQLString::EscapeString(conn_, params[i]);
+        sql.replace(positions[i], 1, escaped_param);
+    }
+
+    return true;
 }

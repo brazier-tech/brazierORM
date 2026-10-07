@@ -85,3 +85,31 @@ public:
 		return q;
 	}
 };
+
+class CreateTestTableDB : public BaseMigration<CreateTestTable> {
+public:
+	static std::vector<std::string> up() {
+		SQLSchemaBuilder builder("test_table");
+		std::vector<std::string> queries;
+
+		queries.push_back(builder
+			.AddColumn("id_test serial primary key")
+			.AddColumn("test varchar(255)")
+			.AddColumn("description varchar(255)")
+			.CreateTable()
+		);
+
+		return queries;
+	}
+
+	static std::vector<std::string> down() {
+		SQLSchemaBuilder builder("test_table");
+		std::vector<std::string> q;
+
+		q.push_back(
+			builder.DropTable()
+		);
+
+		return q;
+	}
+};
