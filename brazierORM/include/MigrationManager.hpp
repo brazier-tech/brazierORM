@@ -30,7 +30,7 @@
 #include "Database.hpp"
 #include "SQLSchemaBuilder.hpp"
 #include "BaseMigration.hpp"
-#include "Logger.hpp"
+#include <brazier/log/Logger.hpp>
 
 namespace brazier {
 

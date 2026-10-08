@@ -5,6 +5,7 @@
   "description": "ORM from brazier",
   "homepage": "https://github.com/lev2p1/brazier",
   "dependencies": [
+    "brazier-logger",
     "libpq",
     "gtest",
     "nlohmann-json"

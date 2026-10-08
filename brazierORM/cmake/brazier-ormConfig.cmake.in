@@ -2,6 +2,7 @@
 
 include(CMakeFindDependencyMacro)
 
+find_dependency(brazier-logger CONFIG REQUIRED)
 find_dependency(PostgreSQL REQUIRED)
 find_dependency(nlohmann_json CONFIG REQUIRED)
 

@@ -13,6 +13,7 @@ endif()
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
+find_package(brazier-logger CONFIG REQUIRED)
 find_package(PostgreSQL REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 
@@ -44,7 +45,10 @@ target_include_directories(brazier_orm PUBLIC
 
 target_compile_features(brazier_orm PUBLIC cxx_std_20)
 
-target_link_libraries(brazier_orm PUBLIC ${LIBRARIES})
+target_link_libraries(brazier_orm PUBLIC 
+    brazier::logger
+    ${LIBRARIES}
+)
 
 if(MSVC)
     set_target_properties(brazier_orm PROPERTIES
@@ -71,9 +75,9 @@ install(TARGETS brazier_orm
     INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
-install(FILES brazierORM.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install(FILES brazierORM.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/brazier/orm)
 
-install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/brazier/orm)
 
 install(EXPORT brazier-ormTargets
     NAMESPACE brazier::
@@ -131,6 +135,7 @@ if(BUILD_TESTS)
 
     target_link_libraries(brazier-orm_tests PRIVATE
         brazier_orm
+        brazier::logger
         GTest::gtest
         GTest::gtest_main
         GTest::gmock
