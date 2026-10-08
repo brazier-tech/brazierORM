@@ -50,6 +50,51 @@ namespace brazier {
 
         std::shared_ptr<Database> database;
 
+        struct Query {
+            std::string sql;
+            std::vector<std::string> params;
+        };
+
+        Query buildUpdate() {
+            Query q;
+            q.sql = "UPDATE " + Derived::table_name + " SET ";
+
+            bool first = true;
+            for (auto& [key, value] : attributes) {
+                if (key == Derived::primary_key) continue;
+                if (!first) q.sql += ", ";
+
+                q.sql += key + " = ?";
+                q.params.push_back(value);
+                first = false;
+            }
+
+            q.sql += " WHERE " + Derived::primary_key + " = ?";
+            q.params.push_back(attributes.at(Derived::primary_key));
+            return q;
+        }
+
+        Query buildInsert() {
+            Query q;
+            std::string cols, placeholders;
+
+            bool first = true;
+            for (auto& [key, value] : attributes) {
+                if (key == Derived::primary_key) continue;
+                if (!first) { cols += ", "; placeholders += ", "; }
+
+                cols += key;
+                placeholders += "?";
+                q.params.push_back(value);
+                first = false;
+            }
+
+            q.sql = "INSERT INTO " + std::string(Derived::table_name) +
+                    " (" + cols + ") VALUES (" + placeholders + ") RETURNING " +
+                    std::string(Derived::primary_key);
+
+            return q;
+        }
     public:
         Model(const std::shared_ptr<Database>& db) : database(db) {}
 
@@ -94,70 +139,32 @@ namespace brazier {
         }
 
         bool save() {
-            if (!validate() || !beforeSave()) {
-                return false;
-            }
+            if (!validate() || !beforeSave()) return false;
+            if (!database) throw std::runtime_error("Database connection is not initialized");
+            if (attributes.empty()) return false;
 
-            if (!database) {
-                throw std::runtime_error("Database connection is not initialized");
-            }
+            bool hasId = attributes.count(Derived::primary_key) &&
+                !attributes.at(Derived::primary_key).empty();
 
-            if (attributes.empty()) {
-                return false;
-            }
-
-            PGconn* conn = database->getConnection();
-            if (!conn) {
-                throw std::runtime_error("Failed to get database connection");
-            }
-
-            bool hasId = attributes.find(Derived::primary_key) != attributes.end() &&
-                !attributes[Derived::primary_key].empty();
-
-            std::map<std::string, std::string> insertValues;
-            for (const auto& [key, value] : attributes) {
-                if (key == Derived::primary_key) continue;
-                insertValues[key] = SQLString::EscapeString(conn, value);
-            }
-
-            if (insertValues.empty()) {
-                Logger::log("Insert values are empty. Aborting save operation", "ERROR");
-                return false;
-            }
-
-            SQLQueryBuilder builder(Derived::table_name);
-
-            if (hasId) {
-                builder.Update(insertValues);
-                builder.Where(Derived::primary_key + " = " + attributes[Derived::primary_key]);
-                std::string query = builder.get();
-                try {
-                    database->execute(query);
-                    afterSave();
-                    return true;
+            try {
+                if (hasId) {
+                    Query q = buildUpdate();
+                    database->execute(q.sql, q.params);
                 }
-                catch (const std::exception& e) {
-                    Logger::log(e.what(), "ERROR");
-                    return false;
-                }
-            }
-            else {
-                builder.Insert(insertValues);
-                std::string query = builder.get();
-                query += " RETURNING " + Derived::primary_key;
+                else {
+                    Query q = buildInsert();
+                    auto row = database->queryMap(q.sql, q.params);
 
-                try {
-                    auto row = database->queryMap(query, {});
-                    if (!row.empty() && row.find(Derived::primary_key) != row.end()) {
+                    if (!row.empty() && row.count(Derived::primary_key)) {
                         attributes[Derived::primary_key] = row.at(Derived::primary_key);
                     }
-                    afterSave();
-                    return true;
                 }
-                catch (const std::exception& e) {
-                    Logger::log(e.what(), "ERROR");
-                    return false;
-                }
+                afterSave();
+                return true;
+            }
+            catch (const std::exception& e) {
+                Logger::log(e.what(), "ERROR");
+                return false;
             }
         }
 

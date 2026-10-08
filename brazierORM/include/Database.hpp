@@ -38,6 +38,7 @@ namespace brazier {
         Database(std::string db_host, std::string db_port, std::string db_user, std::string db_password, std::string db_name);
         ~Database();
         void execute(const std::string& sql);
+        void execute(const std::string& sql, const std::vector<std::string>& params);
         void transaction(const std::string name);
         void rollback(const std::string name);
         void commit();
@@ -54,6 +55,9 @@ namespace brazier {
     private:
         PGconn* conn_;
         bool in_transaction_ = false;
+
+		bool validateParams(const std::string& sql_template, const std::vector<std::string>& params);
+		bool applyParams(std::string& sql, const std::vector<std::string>& params);
     };
 }
 

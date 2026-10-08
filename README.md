@@ -1,5 +1,75 @@
 # Brazier ORM
 
+## Database
+Brazier offers a powerful tool for working with the PostgreSQL database.
+As a user, you don't need to worry about sending SQL queries manually. Models allow you to work with the database without using SQL.
+
+If you do need to send a request manually, Brazier offers several useful methods for doing so.
+
+Available methods from the `Database` class:
+
+1. `execute(query : string)` - executes the request and does not return a result.
+2. `execute(query : string, params : vector<string>)` - executes a query with the specified parameters [?] and does not return a result.
+3. `query(query : string)` - executes a query and returns the result as a `string`.
+4. `queryToVector(sql_template : string, params : vector<string>)` - executes a query with the specified parameters [?] and returns the result as a `vector<map<string, string>>`.
+5. `queryMap(sql_template : string, params : vector<string>)` - executes a query with the specified parameters [?] and returns the result as a `map<string, string>`.
+
+If you want to query the database and get the result as a `vector<map<string, string>>`, you can use the `queryToVector` method. This method takes a SQL query template and a vector of parameters, executes the query, and returns the result as a vector of maps.
+Example:
+```cpp
+vector<map<string, string>> q = db.queryToVector("SELECT * FROM users WHERE id = ?", {"1"});
+```
+> **Note**: Do not use `Database`. Instead, use models to work with the database. Models provide a more convenient and efficient way to interact with the database, and they also help to ensure that your code is more maintainable and less error-prone.
+
+## Models
+Models are classes that represent database tables. Each model class corresponds to a table in the database, and each instance of the model class corresponds to a row in the table.
+Models in brazier-orm are designed to be simple and easy to use. They provide a convenient way to interact with the database without having to write SQL queries manually.
+
+Models designed using the CRTP style, which ensures static polymorphism and compile-time optimization.
+You can define your own model classes by inheriting from the `Model` class and specifying the table name and primary key column name.
+
+```cpp
+    using namespace brazier;
+
+    class YourModel : public Model<YourModel> {
+    public:
+	    static inline std::string table_name = "your_table";
+	    static inline std::string primary_key = "id";
+
+	    static inline std::vector<std::string> fillable = { "test", "description" };
+	    static inline std::vector<std::string> fields = { "id", "test", "description" };
+
+	    YourModel() = default;
+	    YourModel(const std::shared_ptr<Database>& db) : Model<YourModel>(db) {}
+    };
+```
+
+As you see you need to define the table name, primary key, fillable fields, and all fields in the model class. The `fillable` vector is used to specify which fields can be mass-assigned when creating or updating a model instance.
+> **Note**: The `fields` vector is used to specify all the fields in the table. This is used to ensure that only valid fields are used when creating or updating a model instance.
+
+> **Warning**: Dont forget to define constructors for your model class. The default constructor is required for the ORM to work correctly, and the constructor that takes a `std::shared_ptr<Database>` is used to create a model instance with a database connection.
+
+Okay, for create model instance you can use the following code:
+
+```cpp
+    std::shared_ptr<Database> db = std::make_shared<Database>(connection_params);
+    YourModel model(db);
+```
+
+Now you can save the model instance to the database using the `save()` method. The `save()` method will insert a new row into the table if the primary key is not set, or update the existing row if the primary key is set.
+```cpp
+    model.test = "test";
+    model.description = "description";
+    model.save(); // returns true on success, false on failure
+```
+
+If you want to delete the model instance from the database, you can use the `delete_()` method. The `delete_()` method will delete the row from the table that corresponds to the model instance.
+```cpp
+    model.delete_();
+```
+
+Models also provide a much more methods for working with the database, such as `find()`, `where()`, `all()`, and more. You can find more information about these methods in the documentation.
+
 ## Collections
 A convenience container that extends std::vector<ModelType> with helper methods for common collection operations — persistence, deletion, JSON serialization, and functional-style querying.
 
