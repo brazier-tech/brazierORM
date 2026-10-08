@@ -21,7 +21,6 @@
 #pragma once
 #include "SQLQueryBuilder.hpp"
 #include "Database.hpp"
-#include "Context.hpp"
 #include <vector>
 #include <memory>
 
@@ -61,8 +60,8 @@ namespace brazier {
             return *this;
         }
 
-        std::vector<std::shared_ptr<Derived>> get(Database& db = brazier::orm::active_db()) {
-            auto rows = db.queryToVector(this->getQuery());
+        std::vector<std::shared_ptr<Derived>> get(const std::shared_ptr<Database>& db) {
+            auto rows = db->queryToVector(this->getQuery());
             std::vector<std::shared_ptr<Derived>> result;
             for (const auto& row : rows) {
                 auto model = Derived::create(row, true, db);
