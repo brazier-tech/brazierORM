@@ -26,8 +26,7 @@ namespace brazier { class Database; }
 
 namespace brazier::orm {
 
-	void set_active_db(std::shared_ptr<Database> db);
-
-	std::shared_ptr<Database> active_db();
+	void set_active_db(Database& db);
+	Database& active_db();
 
 }

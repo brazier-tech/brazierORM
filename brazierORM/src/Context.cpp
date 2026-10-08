@@ -26,20 +26,14 @@
 namespace brazier::orm {
 
     namespace {
-        std::shared_ptr<Database> g_db;
+        Database* g_db = nullptr;   
     }
 
-    void set_active_db(std::shared_ptr<Database> db) {
-        g_db = std::move(db);
-    }
+    void set_active_db(Database& db) { g_db = &db; }
 
-    std::shared_ptr<Database> active_db() {
-        if (!g_db) {
-            throw std::runtime_error(
-                "brazier-orm: no active DB. "
-                "Did you call brazier::orm::set_active_db(db)?");
-        }
-        return g_db;
+    Database& active_db() {
+        if (!g_db) throw std::runtime_error(
+            "brazier-orm: no active DB. Did you call set_active_db(db)?");
+        return *g_db;
     }
-
 }
