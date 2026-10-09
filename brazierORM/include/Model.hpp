@@ -194,9 +194,9 @@ namespace brazier {
             return model;
         }
 
-        static std::shared_ptr<Derived> find(int id, const std::shared_ptr<Database>& db) {
+        static std::shared_ptr<Derived> find(std::string id, const std::shared_ptr<Database>& db) {
             try {
-                auto results = query().Where(Derived::primary_key + " = " + std::to_string(id)).Limit(1).get(db);
+                auto results = query().Where(Derived::primary_key + " = " + id).Limit(1).get(db);
                 if (results.empty()) {
                     Logger::log("No data found by id", "WARNING");
                     return nullptr;
@@ -211,7 +211,12 @@ namespace brazier {
             }
         }
 
-        static void update(int id, const std::map<std::string, std::string>& data, const std::shared_ptr<Database>& db) {
+        static std::shared_ptr<Derived> find(int id, const std::shared_ptr<Database>& db) {
+            return Derived::find(std::to_string(id), db);
+        }
+
+
+        static void update(std::string id, const std::map<std::string, std::string>& data, const std::shared_ptr<Database>& db) {
             try {
                 PGconn* conn = db->getConnection();
                 if (!conn) {
@@ -229,12 +234,16 @@ namespace brazier {
                     Logger::log("No valid fields provided for update", "WARNING");
                     return;
                 }
-                builder.Update(updateValues).Where(Derived::primary_key + " = " + SQLString::EscapeString(conn, std::to_string(id)));
+                builder.Update(updateValues).Where(Derived::primary_key + " = " + SQLString::EscapeString(conn, id));
                 db->execute(builder.get());
             }
             catch (const std::exception& e) {
                 Logger::log("Update failed: " + std::string(e.what()), "ERROR");
             }
+        }
+
+        static void update(int id, const std::map<std::string, std::string>& data, const std::shared_ptr<Database>& db) {
+            return Derived::update(std::to_string(id), data, db);
         }
 
         void delete_() {
@@ -260,7 +269,7 @@ namespace brazier {
             }
         }
 
-        static void deleteById(int id, const std::shared_ptr<Database>& db) {
+        static void deleteById(std::string id, const std::shared_ptr<Database>& db) {
             try {
                 PGconn* conn = db->getConnection();
                 if (!conn) {
@@ -268,13 +277,17 @@ namespace brazier {
                     return;
                 }
                 SQLQueryBuilder builder(Derived::table_name);
-                builder.Delete().Where("id = " + SQLString::EscapeString(conn, std::to_string(id)));
+                builder.Delete().Where("id = " + SQLString::EscapeString(conn, id));
                 std::string query = builder.get();
                 db->execute(query);
             }
             catch (const std::exception& e) {
                 Logger::log("Delete by ID failed: " + std::string(e.what()), "ERROR");
             }
+        }
+
+        static void deleteById(int id, const std::shared_ptr<Database>& db) {
+            Derived::deleteByID(std::to_string(id), db);
         }
 
         static bool deleteWhere(const std::string& condition, const std::shared_ptr<Database>& db) {
@@ -458,12 +471,16 @@ namespace brazier {
             return results.front();
         }
 
-        static std::shared_ptr<Derived> findOrFail(int id, const std::shared_ptr<Database>& db) {
+        static std::shared_ptr<Derived> findOrFail(std::string id, const std::shared_ptr<Database>& db) {
             auto model = find(id, db);
             if (!model) {
-                throw std::runtime_error("Model with id " + std::to_string(id) + " not found");
+                throw std::runtime_error("Model with id " + id + " not found");
             }
             return model;
+        }
+
+        static std::shared_ptr<Derived> findOrFail(int id, const std::shared_ptr<Database>& db) {
+            return Derived::findOrFail(std::to_string(id), db);
         }
 
         /*
