@@ -2,9 +2,11 @@
   "name": "brazier-orm",
   "version": "0.1.0",
   "license": "LGPL-3.0-or-later",
-  "description": "ORM from brazier",
-  "homepage": "https://github.com/lev2p1/brazier",
+  "description": "ORM from Brazier Framework",
+  "builtin-baseline": "f2e1c41da38c71be74ef48684666991929b45418",
+  "homepage": "https://github.com/brazier-tech/brazierORM",
   "dependencies": [
+    "brazier-logger",
     "libpq",
     "gtest",
     "nlohmann-json"

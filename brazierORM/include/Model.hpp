@@ -29,7 +29,7 @@
 #include <algorithm>
 #include <nlohmann/json.hpp>
 #include "Database.hpp"
-#include "Logger.hpp"
+#include <brazier/log/Logger.hpp>
 #include "ModelQueryBuilder.hpp"
 #include "SQLQueryBuilder.hpp"
 #include "SQLString.hpp"
@@ -281,7 +281,7 @@ namespace brazier {
             try {
                 PGconn* conn = db->getConnection();
                 if (!conn) {
-					throw std::runtime_error("Failed to get database connection");
+                    throw std::runtime_error("Failed to get database connection");
                     return false;
                 }
                 SQLQueryBuilder builder(Derived::table_name);
@@ -292,7 +292,7 @@ namespace brazier {
                 return true;
             }
             catch (const std::exception& e) {
-				throw std::runtime_error("Delete where failed: " + std::string(e.what()));
+                throw std::runtime_error("Delete where failed: " + std::string(e.what()));
             }
         }
 
@@ -315,7 +315,7 @@ namespace brazier {
             PGconn* conn = db->getConnection();
 
             if (!conn) {
-				throw std::runtime_error("Failed to get database connection");
+                throw std::runtime_error("Failed to get database connection");
             }
 
             if (models.empty()) {

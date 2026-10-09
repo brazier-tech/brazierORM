@@ -1,0 +1,13 @@
+@PACKAGE_INIT@
+
+include(CMakeFindDependencyMacro)
+
+find_dependency(brazier-logger CONFIG REQUIRED)
+find_dependency(PostgreSQL REQUIRED)
+find_dependency(nlohmann_json CONFIG REQUIRED)
+
+include("${CMAKE_CURRENT_LIST_DIR}/brazier-ormTargets.cmake")
+
+set(brazier-orm_FOUND TRUE)
+
+check_required_components(brazier-orm)

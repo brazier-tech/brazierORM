@@ -3,7 +3,7 @@
 
 #include <string>
 #include "brazierORM.h"
-#include "include/Logger.hpp"
+#include <brazier/log/Logger.hpp>
 #include "include/Database.hpp"
 
 using namespace brazier;

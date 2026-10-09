@@ -27,7 +27,7 @@
 #include <libpq-fe.h>
 #include <map>
 #include <vector>
-#include "Logger.hpp"
+#include <brazier/log/Logger.hpp>
 #include "SQLString.hpp"
 
 namespace brazier {

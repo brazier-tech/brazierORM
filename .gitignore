@@ -6,3 +6,5 @@
 
 .env
 config.json
+
+vcpkg-configuration.json
